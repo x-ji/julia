@@ -153,19 +153,6 @@ struct strrefcomp {
     }
 };
 
-extern "C" tracer_cb jl_linfo_tracer;
-static std::vector<jl_method_instance_t*> triggered_linfos;
-void jl_callback_triggered_linfos(void)
-{
-    if (triggered_linfos.empty())
-        return;
-    if (jl_linfo_tracer) {
-        std::vector<jl_method_instance_t*> to_process(std::move(triggered_linfos));
-        for (jl_method_instance_t *linfo : to_process)
-            jl_call_tracer(jl_linfo_tracer, (jl_value_t*)linfo);
-    }
-}
-
 class JuliaJITEventListener: public JITEventListener
 {
     std::map<size_t, ObjectInfo, revcomp> objectmap;
@@ -333,8 +320,6 @@ public:
 #endif // defined(_OS_X86_64_)
 #endif // defined(_OS_WINDOWS_)
 
-        std::vector<std::pair<jl_method_instance_t*, uintptr_t>> def_spec;
-        std::vector<std::pair<jl_method_instance_t*, uintptr_t>> def_invoke;
         auto symbols = object::computeSymbolSizes(debugObj);
         bool first = true;
         for (const auto &sym_size : symbols) {
@@ -374,23 +359,7 @@ public:
             jl_method_instance_t *linfo = NULL;
             if (linfo_it != linfo_in_flight.end()) {
                 linfo = linfo_it->second;
-                if (linfo->compile_traced)
-                    triggered_linfos.push_back(linfo);
                 linfo_in_flight.erase(linfo_it);
-                const char *F = linfo->functionObjectsDecls.functionObject;
-                const char *specF = linfo->functionObjectsDecls.specFunctionObject;
-                if (linfo->invoke == jl_fptr_trampoline) {
-                    if (specF && sName.equals(specF)) {
-                        def_spec.push_back({linfo, Addr});
-                        if (!strcmp(F, "jl_fptr_args"))
-                            def_invoke.push_back({linfo, (uintptr_t)&jl_fptr_args});
-                        else if (!strcmp(F, "jl_fptr_sparam"))
-                            def_invoke.push_back({linfo, (uintptr_t)&jl_fptr_sparam});
-                    }
-                    else if (sName.equals(F)) {
-                        def_invoke.push_back({linfo, Addr});
-                    }
-                }
             }
             if (linfo)
                 linfomap[Addr] = std::make_pair(Size, linfo);
@@ -403,11 +372,6 @@ public:
                 objectmap[SectionLoadAddr] = tmp;
                 first = false;
            }
-           // now process these in order, so we ensure the closure values are updated before removing the trampoline
-           for (auto &def : def_spec)
-               def.first->specptr.fptr = (void*)def.second;
-           for (auto &def : def_invoke)
-               def.first->invoke = (jl_callptr_t)def.second;
         }
         uv_rwlock_wrunlock(&threadsafe);
         jl_gc_safe_leave(ptls, gc_state);

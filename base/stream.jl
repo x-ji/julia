@@ -177,11 +177,9 @@ mutable struct TTY <: LibuvStream
     end
 end
 
-function TTY(fd::RawFD; readable::Bool = false)
+function TTY(fd::OS_HANDLE; readable::Bool = false)
     tty = TTY(Libc.malloc(_sizeof_uv_tty), StatusUninit)
-    # This needs to go after associate_julia_struct so that there
-    # is no garbage in the ->data field
-    err = ccall(:uv_tty_init, Int32, (Ptr{Cvoid}, Ptr{Cvoid}, RawFD, Int32),
+    err = ccall(:uv_tty_init, Int32, (Ptr{Cvoid}, Ptr{Cvoid}, OS_HANDLE, Int32),
         eventloop(), tty.handle, fd, readable)
     uv_error("TTY", err)
     tty.status = StatusOpen

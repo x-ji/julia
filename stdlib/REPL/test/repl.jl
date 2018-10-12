@@ -728,24 +728,25 @@ ccall(:jl_exit_on_sigint, Cvoid, (Cint,), 1)
 
 let exename = Base.julia_cmd()
     # Test REPL in dumb mode
-    if !Sys.iswindows()
-        with_fake_pty() do slave, master
-            nENV = copy(ENV)
-            nENV["TERM"] = "dumb"
-            p = run(setenv(`$exename --startup-file=no -q`,nENV),slave,slave,slave,wait=false)
-            output = readuntil(master,"julia> ",keep=true)
-            if ccall(:jl_running_on_valgrind,Cint,()) == 0
-                # If --trace-children=yes is passed to valgrind, we will get a
-                # valgrind banner here, not just the prompt.
-                @test output == "julia> "
-            end
-            write(master,"1\nexit()\n")
-
-            wait(p)
-            output = readuntil(master,' ',keep=true)
-            @test output == "1\r\nexit()\r\n1\r\n\r\njulia> "
-            @test bytesavailable(master) == 0
+    with_fake_pty() do slave, master
+        nENV = copy(ENV)
+        nENV["TERM"] = "dumb"
+        p = run(detach(setenv(`$exename --startup-file=no -q`, nENV)), slave, slave, slave, wait=false)
+        Base.close_stdio(slave)
+        output = readuntil(master, "julia> ", keep=true)
+        if ccall(:jl_running_on_valgrind, Cint,()) == 0
+            # If --trace-children=yes is passed to valgrind, we will get a
+            # valgrind banner here, not just the prompt.
+            @test output == "julia> "
         end
+        write(master, "1\nexit()\n")
+
+        output = readuntil(master, ' ', keep=true)
+        @test output == "1\r\nexit()\r\n1\r\n\r\njulia> "
+        @test bytesavailable(master) == 0
+        @test eof(master)
+        @test read(master, String) == ""
+        wait(p)
     end
 
     # Test stream mode

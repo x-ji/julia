@@ -602,9 +602,7 @@ function fieldcount(@nospecialize t)
     elseif t == Union{}
         throw(ArgumentError("The empty type does not have a well-defined number of fields since it does not have instances."))
     end
-    if !(t isa DataType)
-        throw(TypeError(:fieldcount, "", Type, t))
-    end
+    t::DataType
     if t.name === NamedTuple_typename
         names, types = t.parameters
         if names isa Tuple

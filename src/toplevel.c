@@ -117,7 +117,7 @@ jl_value_t *jl_eval_module_expr(jl_module_t *parent_module, jl_expr_t *ex)
     int std_imports = (jl_exprarg(ex, 0) == jl_true);
     jl_sym_t *name = (jl_sym_t*)jl_exprarg(ex, 1);
     if (!jl_is_symbol(name)) {
-        jl_type_error("module", (jl_value_t*)jl_sym_type, (jl_value_t*)name);
+        jl_type_error_ctx("module expression", (jl_value_t*)jl_sym_type, (jl_value_t*)name);
     }
 
     jl_module_t *newm = jl_new_module(name);

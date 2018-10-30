@@ -860,7 +860,7 @@ JL_CALLABLE(jl_f_apply_type)
         }
         return jl_apply_type(args[0], &args[1], nargs-1);
     }
-    jl_type_error("Type{...} expression", (jl_value_t*)jl_unionall_type, args[0]);
+    jl_type_error_ctx("Type{...} expression", (jl_value_t*)jl_unionall_type, args[0]);
 }
 
 // generic function reflection ------------------------------------------------
@@ -879,7 +879,7 @@ JL_CALLABLE(jl_f_invoke)
     jl_value_t *argtypes = args[1];
     JL_GC_PUSH1(&argtypes);
     if (!jl_is_tuple_type(jl_unwrap_unionall(args[1])))
-        jl_type_error_rt(jl_symbol_name(jl_gf_name(args[0])), "invoke", (jl_value_t*)jl_type_type, args[1]);
+        jl_type_error("invoke", (jl_value_t*)jl_type_type, args[1]);
     if (!jl_tuple_isa(&args[2], nargs-2, (jl_datatype_t*)argtypes))
         jl_error("invoke: argument type error");
     args[1] = args[0];  // move function directly in front of arguments

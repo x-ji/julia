@@ -61,12 +61,20 @@ function showerror(io::IO, ex::TypeError)
         else
             targs = (typeof(ex.got),)
         end
-        if isempty(ex.context)
+        ctx = ""
+        if ex.func !== nothing
             ctx = "in $(ex.func)"
-        else
-            ctx = "in $(ex.func), in $(ex.context)"
         end
-        print(io, ctx, ", expected ", ex.expected, ", got ", targs...)
+        if !isempty(ex.context)
+            if !isempty(ctx)
+                ctx *= ", "
+            end
+            ctx *= "in $(ex.context)"
+        end
+        if !isempty(ctx)
+            ctx *= ", "
+        end
+        print(io, ctx, "expected ", ex.expected, ", got ", targs...)
     end
 end
 

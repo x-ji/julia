@@ -1409,6 +1409,8 @@ JL_DLLEXPORT void JL_NORETURN jl_too_many_args(const char *fname, int max);
 JL_DLLEXPORT void JL_NORETURN jl_type_error(const char *fname,
                                             jl_value_t *expected,
                                             jl_value_t *got JL_MAYBE_UNROOTED);
+JL_DLLEXPORT void JL_NORETURN jl_type_error_ctx(const char *context, jl_value_t *expected,
+                                                jl_value_t *got);
 JL_DLLEXPORT void JL_NORETURN jl_type_error_rt(const char *fname,
                                                const char *context,
                                                jl_value_t *ty,

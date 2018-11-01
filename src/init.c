@@ -611,7 +611,6 @@ void _julia_init(JL_IMAGE_SEARCH rel)
     // Make sure we finalize the tls callback before starting any threads.
     jl_get_ptls_states_getter();
 #endif
-    jl_ptls_t ptls = jl_get_ptls_states();
     jl_safepoint_init();
     libsupport_init();
     htable_new(&jl_current_modules, 0);

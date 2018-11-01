@@ -91,14 +91,18 @@ function catch_backtrace()
     return _reformat_bt(bt[], bt2[])
 end
 
+struct ExceptionStack
+    stack
+end
+
 """
     catch_stack(task=current_task(); [inclue_bt=true])
 
 Get the stack of exceptions currently being handled. For nested catch blocks
 there may be more than one current exception in which case the most recently
-thrown exception is last in the stack. The stack is returned as a Vector of
-`(exception,backtrace)` pairs, or a Vector of exceptions if `include_bt` is
-false.
+thrown exception is last in the stack. The stack is returned as an
+`ExceptionStack` containing a vector of either `(exception,backtrace)` pairs.
+If `include_bt` is false, the backtrace in each pair will be set to `nothing`.
 
 Explicitly passing `task` will return the current exception stack on an
 arbitrary task. This is useful for inspecting tasks which have failed due to
@@ -110,9 +114,9 @@ function catch_stack(task=current_task(); include_bt=true)
     stride = include_bt ? 3 : 1
     for i = reverse(1:stride:length(raw))
         e = raw[i]
-        push!(formatted, include_bt ? (e,Base._reformat_bt(raw[i+1],raw[i+2])) : e)
+        push!(formatted, (e, include_bt ? Base._reformat_bt(raw[i+1],raw[i+2]) : nothing))
     end
-    formatted
+    ExceptionStack(formatted)
 end
 
 ## keyword arg lowering generates calls to this ##

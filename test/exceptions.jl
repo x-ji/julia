@@ -233,7 +233,8 @@ end
     yield(t)
     @test t.state == :failed
     @test t.result == ErrorException("B")
-    @test catch_stack(t, include_bt=false) == [ErrorException("A"), ErrorException("B")]
+    @test catch_stack(t, include_bt=false).stack ==
+          [(ErrorException("A"),nothing), (ErrorException("B"),nothing)]
     # Exception stacks for tasks which never get the chance to start
     t = @task nothing
     @test try

@@ -96,7 +96,7 @@ struct ExceptionStack
 end
 
 """
-    catch_stack(task=current_task(); [inclue_bt=true])
+    current_exceptions(task=current_task(); [inclue_bt=true])
 
 Get the stack of exceptions currently being handled. For nested catch blocks
 there may be more than one current exception in which case the most recently
@@ -108,7 +108,7 @@ Explicitly passing `task` will return the current exception stack on an
 arbitrary task. This is useful for inspecting tasks which have failed due to
 uncaught exceptions.
 """
-function catch_stack(task=current_task(); include_bt=true)
+function current_exceptions(task=current_task(); include_bt=true)
     raw = ccall(:jl_get_excstack, Any, (Any,Cint,Cint), task, include_bt, typemax(Cint))
     formatted = Any[]
     stride = include_bt ? 3 : 1

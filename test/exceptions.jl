@@ -5,43 +5,43 @@ using Test
     try
         error("A")
     catch
-        @test length(catch_stack()) == 1
+        @test length(current_exceptions()) == 1
     end
-    @test length(catch_stack()) == 0
+    @test length(current_exceptions()) == 0
     # Exiting via a finally block does not pop the exception
     try
         try
             error("A")
         finally
-            @test length(catch_stack()) == 1
+            @test length(current_exceptions()) == 1
         end
     catch
-        @test length(catch_stack()) == 1
+        @test length(current_exceptions()) == 1
     end
     # The combined try-catch-finally form obeys the same rules as above
     try
         error("A")
     catch
-        @test length(catch_stack()) == 1
+        @test length(current_exceptions()) == 1
     finally
-        @test length(catch_stack()) == 0
+        @test length(current_exceptions()) == 0
     end
-    @test length(catch_stack()) == 0
+    @test length(current_exceptions()) == 0
     # Errors are pushed onto the stack according to catch block nesting
     try
         error("RootCause")
     catch
-        @test length(catch_stack()) == 1
+        @test length(current_exceptions()) == 1
         try
             error("B")
         catch
-            stack = catch_stack()
+            stack = current_exceptions()
             @test length(stack) == 2
             @test stack[1][1].msg == "RootCause"
             @test stack[2][1].msg == "B"
         end
         # Stack pops correctly
-        stack = catch_stack()
+        stack = current_exceptions()
         @test length(stack) == 1
         @test stack[1][1].msg == "RootCause"
     end
@@ -52,7 +52,7 @@ end
     val = try
         error("A")
     catch
-        @test length(catch_stack()) == 1
+        @test length(current_exceptions()) == 1
         1
     end
     @test val == 1
@@ -61,11 +61,11 @@ end
         try
             error("A")
         catch
-            length(catch_stack())
+            length(current_exceptions())
         end
     end
     @test test_exc_stack_tailpos() == 1
-    @test length(catch_stack()) == 0
+    @test length(current_exceptions()) == 0
 end
 
 @testset "Exception stacks - early exit from try or catch" begin
@@ -75,7 +75,7 @@ end
         try
             error("A")
         catch
-            @test length(catch_stack()) == 1
+            @test length(current_exceptions()) == 1
             return
         end
     end
@@ -84,7 +84,7 @@ end
         try
             error("A")
         catch
-            @test length(catch_stack()) == 1
+            @test length(current_exceptions()) == 1
             break
         end
     end
@@ -92,25 +92,25 @@ end
         try
             error("A")
         catch
-            @test length(catch_stack()) == 1
+            @test length(current_exceptions()) == 1
             continue
         end
     end
     try
         error("A")
     catch
-        @test length(catch_stack()) == 1
+        @test length(current_exceptions()) == 1
         @goto outofcatch
     end
     @label outofcatch
-    @test length(catch_stack()) == 0
+    @test length(current_exceptions()) == 0
 
     # Exiting from a try block in various ways should not affect the exception
     # stack state.
     try
         error("ExceptionInOuterTry")
     catch
-        @test length(catch_stack()) == 1
+        @test length(current_exceptions()) == 1
         function test_exc_stack_try_return()
             try
                 return
@@ -135,8 +135,8 @@ end
         catch
         end
         @label outoftry
-        @test length(catch_stack()) == 1
-        @test catch_stack()[1][1] == ErrorException("ExceptionInOuterTry")
+        @test length(current_exceptions()) == 1
+        @test current_exceptions()[1][1] == ErrorException("ExceptionInOuterTry")
     end
 end
 
@@ -155,10 +155,10 @@ end
     @test try
         test_exc_stack_deep(100)
     catch
-        @test catch_stack()[1][1] == ErrorException("RootCause")
-        length(catch_stack())
+        @test current_exceptions()[1][1] == ErrorException("RootCause")
+        length(current_exceptions())
     end == 100
-    @test length(catch_stack()) == 0
+    @test length(current_exceptions()) == 0
 end
 
 @testset "Exception stacks and Tasks" begin
@@ -175,10 +175,10 @@ end
         @test t.state == :done
         @test t.result == ErrorException("B")
         # Task exception state is preserved around task switches
-        @test length(catch_stack()) == 1
-        @test catch_stack()[1][1] == ErrorException("A")
+        @test length(current_exceptions()) == 1
+        @test current_exceptions()[1][1] == ErrorException("A")
     end
-    @test length(catch_stack()) == 0
+    @test length(current_exceptions()) == 0
     # test rethrow() rethrows correct state
     bt = []
     try
@@ -201,7 +201,7 @@ end
         @test exc == ErrorException("A")
         @test bt == catch_backtrace()
     end
-    @test length(catch_stack()) == 0
+    @test length(current_exceptions()) == 0
     # test rethrow with argument
     bt = []
     try
@@ -223,7 +223,7 @@ end
         @test exc == ErrorException("C")
         @test bt == catch_backtrace()
     end
-    @test length(catch_stack()) == 0
+    @test length(current_exceptions()) == 0
     # Exception stacks on other tasks
     t = @task try
         error("A")
@@ -233,7 +233,7 @@ end
     yield(t)
     @test t.state == :failed
     @test t.result == ErrorException("B")
-    @test catch_stack(t, include_bt=false).stack ==
+    @test current_exceptions(t, include_bt=false).stack ==
           [(ErrorException("A"),nothing), (ErrorException("B"),nothing)]
     # Exception stacks for tasks which never get the chance to start
     t = @task nothing
@@ -243,8 +243,8 @@ end
     catch e
         e
     end == ErrorException("expected")
-    @test length(catch_stack(t)) == 1
-    @test length(catch_stack(t)[1][2]) > 0 # backtrace is nonempty
+    @test length(current_exceptions(t)) == 1
+    @test length(current_exceptions(t)[1][2]) > 0 # backtrace is nonempty
 end
 
 @testset "rethrow" begin

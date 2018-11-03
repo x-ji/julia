@@ -37,13 +37,13 @@ using Test
         catch
             stack = current_exceptions()
             @test length(stack) == 2
-            @test stack[1][1].msg == "RootCause"
-            @test stack[2][1].msg == "B"
+            @test stack[1].exception.msg == "RootCause"
+            @test stack[2].exception.msg == "B"
         end
         # Stack pops correctly
         stack = current_exceptions()
         @test length(stack) == 1
-        @test stack[1][1].msg == "RootCause"
+        @test stack[1].exception.msg == "RootCause"
     end
 end
 
@@ -136,7 +136,7 @@ end
         end
         @label outoftry
         @test length(current_exceptions()) == 1
-        @test current_exceptions()[1][1] == ErrorException("ExceptionInOuterTry")
+        @test current_exceptions()[1].exception == ErrorException("ExceptionInOuterTry")
     end
 end
 
@@ -155,7 +155,7 @@ end
     @test try
         test_exc_stack_deep(100)
     catch
-        @test current_exceptions()[1][1] == ErrorException("RootCause")
+        @test current_exceptions()[1].exception == ErrorException("RootCause")
         length(current_exceptions())
     end == 100
     @test length(current_exceptions()) == 0
@@ -176,7 +176,7 @@ end
         @test t.result == ErrorException("B")
         # Task exception state is preserved around task switches
         @test length(current_exceptions()) == 1
-        @test current_exceptions()[1][1] == ErrorException("A")
+        @test current_exceptions()[1].exception == ErrorException("A")
     end
     @test length(current_exceptions()) == 0
     # test rethrow() rethrows correct state
@@ -233,8 +233,10 @@ end
     yield(t)
     @test t.state == :failed
     @test t.result == ErrorException("B")
-    @test current_exceptions(t, include_bt=false).stack ==
-          [(ErrorException("A"),nothing), (ErrorException("B"),nothing)]
+    @test current_exceptions(t, include_bt=false) == [
+        (exception=ErrorException("A"),backtrace=nothing),
+        (exception=ErrorException("B"),backtrace=nothing)
+    ]
     # Exception stacks for tasks which never get the chance to start
     t = @task nothing
     @test try
@@ -244,7 +246,7 @@ end
         e
     end == ErrorException("expected")
     @test length(current_exceptions(t)) == 1
-    @test length(current_exceptions(t)[1][2]) > 0 # backtrace is nonempty
+    @test length(current_exceptions(t)[1].backtrace) > 0
 end
 
 @testset "rethrow" begin

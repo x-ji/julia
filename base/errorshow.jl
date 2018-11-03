@@ -626,11 +626,10 @@ function process_backtrace(t::Vector, limit::Int=typemax(Int); skipC = true)
     return ret
 end
 
-length(s::ExceptionStack) = length(s.stack)
+size(s::ExceptionStack) = size(s.stack)
 getindex(s::ExceptionStack, i) = s.stack[i]
 
-function show(io::IO, excstack::ExceptionStack)
-    stack = excstack.stack
+function show(io::IO, ::MIME"text/plain", stack::ExceptionStack)
     nexc = length(stack)
     printstyled(io, nexc, "-element ExceptionStack", nexc == 0 ? "" : ":\n")
     for i = nexc:-1:1
@@ -642,6 +641,7 @@ function show(io::IO, excstack::ExceptionStack)
         println(io)
     end
 end
+show(io::IO, stack::ExceptionStack) = show(io, MIME"text/plain"(), stack)
 
 @noinline function throw_eachindex_mismatch(::IndexLinear, A...)
     throw(DimensionMismatch("all inputs to eachindex must have the same indices, got $(join(LinearIndices.(A), ", ", " and "))"))

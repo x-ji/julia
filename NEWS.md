@@ -6,6 +6,11 @@ New language features
 
   * An *exception stack* is maintained on each task to make exception handling more robust and enable root cause analysis using `catch_stack` ([#28878]).
 
+Multi-threading changes
+-----------------------
+
+  * The `Condition` and `ReentrantLock` types now come in thread-safe variants formed by adding `MT` to their name.
+    Single-threaded variants now exist additionally with the `ST` suffix — these are v1.0 defaults ([#TBD]).
 
 Language changes
 ----------------

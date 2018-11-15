@@ -849,8 +849,10 @@ function test_intersection()
 
     @testintersect(Tuple{T,T} where T<:Union{UpperTriangular, UnitUpperTriangular},
                    Tuple{AbstractArray{T,N}, AbstractArray{T,N}} where N where T,
-                   Union{Tuple{T,T} where T<:UpperTriangular,
-                         Tuple{T,T} where T<:UnitUpperTriangular})
+                   Tuple{A,A} where A<:(Union{UpperTriangular{T}, UnitUpperTriangular{T}} where T))
+                   # TODO: this answer is also OK
+                   #Union{Tuple{T,T} where T<:UpperTriangular,
+                   #      Tuple{T,T} where T<:UnitUpperTriangular}
 
     @testintersect(DataType, Type, DataType)
     @testintersect(DataType, Type{T} where T<:Integer, Type{T} where T<:Integer)
@@ -1357,3 +1359,42 @@ end
 @testintersect(Tuple{Vararg{Val{N}, N}} where N,
                Tuple{Val{2}, Vararg{Val{3}}},
                Union{})
+
+# issue #29955
+struct M29955{T, TV<:AbstractVector{T}}
+end
+@testintersect(M29955,
+               M29955{<:Any,TV} where TV>:Vector{Float64},
+               M29955{Float64,TV} where Array{Float64,1}<:TV<:AbstractArray{Float64,1})
+
+struct A29955{T, TV<:AbstractVector{T}, TModel<:M29955{T,TV}}
+end
+@testintersect(Tuple{Type{A29955{Float64,Array{Float64,1},_1}} where _1,
+                     Any},
+               Tuple{Type{A29955{T,TV,TM}},
+                     TM} where {T,TV<:AbstractVector{T},TM<:M29955{T,TV}},
+               Tuple{Type{A29955{Float64,Array{Float64,1},TM}},
+                     TM} where TM<:M29955{Float64,Array{Float64,1}})
+let M = M29955{T,Vector{Float64}} where T
+    @test M == (M29955{T,Vector{Float64}} where T)
+    @test M{Float64} == M29955{Float64,Vector{Float64}}
+    @test_throws TypeError M{Float32}
+    @test_throws TypeError M{Real}
+end
+
+struct Concrete{N, C, U} <: AbstractArray{Union{C, U}, N}
+end
+@testintersect(Concrete, AbstractVector, Concrete{1})
+
+@testintersect(Array{Union{A,B},C} where {A,B,C},
+               AbstractVector,
+               Vector)
+
+import LinearAlgebra: RealHermSymComplexSym, RealHermSymComplexHerm
+
+let A = Tuple{Adjoint{<:Any,<:RealHermSymComplexHerm}, Adjoint{<:Any,<:RealHermSymComplexSym}},
+    B = Tuple{Adjoint{<:Any,<:AbstractMatrix}, Adjoint{<:Any,<:RealHermSymComplexHerm}}
+    @testintersect(A, B,
+                   Tuple{Adjoint{<:Any,<:RealHermSymComplexHerm},
+                         Adjoint{<:Any,<:Union{Hermitian{<:Real,<:Any},Symmetric{<:Real,<:Any}}}})
+end

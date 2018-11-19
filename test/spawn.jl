@@ -65,6 +65,7 @@ let a, p
         @test !success(p)
     end
     p = wait(a)
+    @test Base.n_waiters(a) == length(a.waitq)
     kill(p)
     wait(t)
 end

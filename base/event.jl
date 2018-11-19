@@ -6,7 +6,7 @@
     AbstractLock
 
 Abstract supertype describing types that
-implement the thread-safe synchronization primitives:
+implement the synchronization primitives:
 [`lock`](@ref), [`trylock`](@ref), [`unlock`](@ref), and [`islocked`](@ref).
 """
 abstract type AbstractLock end
@@ -24,30 +24,33 @@ assert_havelock(l::AbstractLock, tid::Task) =
 assert_havelock(l::AbstractLock, tid::Nothing) = error("concurrency violation detected")
 
 """
-    NotALock
+    AlwaysLockedST
 
-A struct that pretends to be always locked on the original thread it was allocated on,
+This struct does not implement a real lock, but instead
+pretends to be always locked on the original thread it was allocated on,
 and simply ignores all other interactions.
+It also does not synchronize tasks; for that use a [`CooperativeLock`](@ref) or a
+real lock such as [`RecursiveLock`](@ref).
 This can be used in the place of a real lock to, instead, simply and cheaply assert
 that the operation is only occurring on a single thread.
-And is thus functionally equivalent to allocating a real, recursive lock,
+And is thus functionally equivalent to allocating a real, recursive, task-unaware lock
 immediately calling `lock` on it, and then never calling a matching `unlock`,
 except that calling `lock` from another thread will throw a concurrency violation exception.
 """
-struct NotALock <: AbstractLock
+struct AlwaysLockedST <: AbstractLock
     ownertid::Int16
-    NotALock() = new(Threads.threadid())
+    AlwaysLockedST() = new(Threads.threadid())
 end
-assert_havelock(l::NotALock) = assert_havelock(l, l.ownertid)
-lock(l::NotALock) = assert_havelock(l)
-unlock(l::NotALock) = assert_havelock(l)
-trylock(l::NotALock) = l.ownertid == Threads.threadid()
-islocked(::NotALock) = true
+assert_havelock(l::AlwaysLockedST) = assert_havelock(l, l.ownertid)
+lock(l::AlwaysLockedST) = assert_havelock(l)
+unlock(l::AlwaysLockedST) = assert_havelock(l)
+trylock(l::AlwaysLockedST) = l.ownertid == Threads.threadid()
+islocked(::AlwaysLockedST) = true
 
 """
     CooperativeLock
 
-An optimistic lock, which can be used cheaply to check for missing
+An optimistic lock for cooperative tasks, which can be used cheaply to check for missing
 lock/unlock guards around `wait`, in the trivial (conflict-free, yield-free, single-threaded, non-recursive) case,
 without paying the cost for a full RecursiveLock.
 """
@@ -56,9 +59,24 @@ mutable struct CooperativeLock <: AbstractLock
     CooperativeLock() = new(nothing)
 end
 assert_havelock(l::CooperativeLock) = assert_havelock(l, l.owner)
-lock(l::CooperativeLock) = (l.owner === nothing || error("concurrency violation detected"); l.owner = current_task(); nothing)
-unlock(l::CooperativeLock) = (assert_havelock(l); l.owner = nothing; nothing)
-trylock(l::CooperativeLock) = (l.owner === nothing ? (l.owner = current_task(); true) : false)
+function lock(l::CooperativeLock)
+    l.owner === nothing || error("concurrency violation detected")
+    l.owner = current_task()
+    nothing
+end
+function unlock(l::CooperativeLock)
+    assert_havelock(l)
+    l.owner = nothing
+    nothing
+end
+function trylock(l::CooperativeLock)
+    if l.owner === nothing
+        l.owner = current_task()
+        return true
+    else
+        return false
+    end
+end
 islocked(l::CooperativeLock) = l.owner !== nothing
 
 
@@ -142,15 +160,15 @@ function notify(c::GenericCondition, @nospecialize(arg), all, error)
     if all
         cnt = length(c.waitq)
         for t in c.waitq
-            error ? schedule(t, arg, error=error) : schedule(t, arg)
+            schedule(t, arg, error=error)
         end
         empty!(c.waitq)
     elseif !isempty(c.waitq)
         cnt = 1
         t = popfirst!(c.waitq)
-        error ? schedule(t, arg, error=error) : schedule(t, arg)
+        schedule(t, arg, error=error)
     end
-    cnt
+    return cnt
 end
 
 notify_error(c::GenericCondition, err) = notify(c, err, true, true)
@@ -172,8 +190,6 @@ Create a level-triggered event source. Tasks that call [`wait`](@ref) on an
 `Event` are suspended and queued until `notify` is called on the `Event`.
 After `notify` is called, the `Event` remains in a signaled state and
 tasks will no longer block when waiting for it.
-
-This object is NOT thread-safe. See [`Threads.EventMT`](@ref) for a thread-safe version.
 """
 mutable struct GenericEvent{L<:AbstractLock}
     notify::GenericCondition{L}
@@ -212,8 +228,7 @@ const ConditionST = GenericCondition{CooperativeLock}
 const EventST = GenericEvent{CooperativeLock}
 
 # default (Julia v1.0) is currently single-threaded
-const Condition = GenericCondition{NotALock}
-const Event = EventST
+const Condition = GenericCondition{AlwaysLockedST}
 
 
 ## scheduler and work queue

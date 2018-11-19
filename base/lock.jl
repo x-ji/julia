@@ -7,8 +7,6 @@
 Creates a re-entrant lock for synchronizing [`Task`](@ref)s.
 The same task can acquire the lock as many times as required.
 Each [`lock`](@ref) must be matched with an [`unlock`](@ref).
-
-This lock is NOT thread-safe. See [`Threads.ReentrantLockMT`](@ref) for a thread-safe version.
 """
 mutable struct GenericReentrantLock{ThreadLock<:AbstractLock} <: AbstractLock
     locked_by::Union{Task, Nothing}
@@ -20,7 +18,6 @@ end
 
 # A basic single-threaded, Julia-aware lock:
 const ReentrantLockST = GenericReentrantLock{CooperativeLock}
-const ReentrantLock = ReentrantLockST # default (Julia v1.0) is currently single-threaded
 
 
 """
@@ -122,7 +119,7 @@ function unlockall(rl::GenericReentrantLock)
     n == 0 && error("unlock count must match lock count")
     lock(rl.cond_wait)
     try
-        rl.reentrancy_cnt == 0
+        rl.reentrancy_cnt = 0
         rl.locked_by = nothing
         notify(rl.cond_wait)
     finally

@@ -317,6 +317,8 @@ include("task.jl")
 include("lock.jl")
 include("threads.jl")
 include("weakkeydict.jl")
+const ReentrantLock = Threads.ReentrantLockMT
+const Event = Threads.EventMT
 
 # Logging
 include("logging.jl")

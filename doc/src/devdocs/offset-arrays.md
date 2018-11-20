@@ -5,7 +5,8 @@ arrays are indexed starting at 1, whereas some other languages start numbering a
 (e.g., Fortran) allow you to specify arbitrary starting indices.  While there is much merit in
 picking a standard (i.e., 1 for Julia), there are some algorithms which simplify considerably
 if you can index outside the range `1:size(A,d)` (and not just `0:size(A,d)-1`, either).
-To facilitate such computations, Julia supports arrays with arbitrary indices.
+To facilitate such computations, Julia supports arrays with arbitrary indices. 
+See the [OffsetArrays.jl](https://github.com/JuliaArrays/OffsetArrays.jl) package.
 
 The purpose of this page is to address the question, "what do I have to do to support such arrays
 in my own code?"  First, let's address the simplest case: if you know that your code will never
